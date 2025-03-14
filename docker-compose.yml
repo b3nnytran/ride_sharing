@@ -1,0 +1,121 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: ride-sharing-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - ride-sharing-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: ride-sharing-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - ride-sharing-network
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: ride-sharing-api-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - user-service
+      - rider-service
+      - booking-service
+      - ride-matching-service
+    environment:
+      - USER_SERVICE_URL=http://user-service:8001
+      - RIDER_SERVICE_URL=http://rider-service:8002
+      - BOOKING_SERVICE_URL=http://booking-service:8003
+      - RIDE_MATCHING_SERVICE_URL=http://ride-matching-service:8004
+    networks:
+      - ride-sharing-network
+
+  user-service:
+    build: ./user-service
+    container_name: ride-sharing-user-service
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - SERVICE_PORT=8001
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - ride-sharing-network
+
+  rider-service:
+    build: ./rider-service
+    container_name: ride-sharing-rider-service
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - SERVICE_PORT=8002
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - ride-sharing-network
+
+  booking-service:
+    build: ./booking-service
+    container_name: ride-sharing-booking-service
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ride-matching-service:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - SERVICE_PORT=8003
+      - JWT_SECRET=${JWT_SECRET}
+      - RIDE_MATCHING_SERVICE_URL=http://ride-matching-service:8004
+    networks:
+      - ride-sharing-network
+
+  ride-matching-service:
+    build: ./ride-matching-service
+    container_name: ride-sharing-ride-matching-service
+    ports:
+      - "8004:8004"
+    depends_on:
+      - rider-service
+    environment:
+      - SERVICE_PORT=8004
+      - RIDER_SERVICE_URL=http://rider-service:8002
+    networks:
+      - ride-sharing-network
+
+networks:
+  ride-sharing-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
