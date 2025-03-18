@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS user_schema.users (
 -- Riders table
 CREATE TABLE IF NOT EXISTS rider_schema.riders (
     id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL,
+    rider_name VARCHAR(100) NOT NULL,
     vehicle_type VARCHAR(50) NOT NULL,
     license_plate VARCHAR(20) NOT NULL,
     rating DECIMAL(3, 2) DEFAULT 5.0,
@@ -26,10 +26,10 @@ CREATE TABLE IF NOT EXISTS rider_schema.riders (
 -- Distance matrix for user-rider combinations
 CREATE TABLE IF NOT EXISTS rider_schema.distance_matrix (
     id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL,
+    rider_name VARCHAR(100) NOT NULL,
     rider_id INT NOT NULL,
     distance_km DECIMAL(5, 2) NOT NULL,
-    UNIQUE (user_id, rider_id)
+    UNIQUE (rider_name, rider_id)
 );
 
 -- Rides table

@@ -1,8 +1,8 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import bookings
-from app.database import engine, Base
+from app.web.routes import bookings
+from app.data.database import engine, Base
 
 # Create tables
 Base.metadata.create_all(bind=engine)
